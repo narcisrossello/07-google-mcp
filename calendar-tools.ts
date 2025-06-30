@@ -132,4 +132,41 @@ export function setupCalendarTools(server: McpServer, calendar: any) {
       };
     }
   );
+
+  // Tool para poder borrar un evento
+  server.tool(
+    'delete-event',
+    'Delete an event from Google Calendar by its ID.',
+    {
+      eventId: z.string().describe('The ID of the event to delete'),
+    },
+    async ({ eventId }) => {
+      try {
+        await calendar.events.delete({
+          calendarId: 'primary',
+          eventId,
+        });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ Event with ID "${eventId}" deleted successfully!`,
+            }
+          ]
+        };
+      } catch (error) {
+        console.error("Error deleting event:", error);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: "Error deleting event: " + (error instanceof Error ? error.message : String(error)),
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
 }

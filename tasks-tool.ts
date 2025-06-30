@@ -183,27 +183,30 @@ export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
     }
   );
 
-  // Ahora una tool para poder actualizar una tarea
   server.tool(
     'update_task',
-    'Updates an existing task',
+    'Updates an existing task. To remove the due date, pass an empty string for "due".',
     {
       taskId: z.string().describe('The ID of the task to update'),
       title: z.string().optional().describe('The new title of the task'),
       notes: z.string().optional().describe('Optional new notes for the task'),
-      due: z.string().optional().describe('Optional new due date in RFC 3339 format (e.g. 2024-12-31T23:59:59Z)'),
+      due: z.string().optional().describe('Optional new due date in RFC 3339 format (e.g. 2024-12-31T23:59:59Z). To remove the due date, pass an empty string.'),
       taskListId: z.string().describe('The ID of the task list to update the task in')
     },
     async ({ taskId, title, notes, due, taskListId }) => {
       try {
+        // If due is an empty string, explicitly set it to null to remove it
+        const requestBody: Record<string, any> = {};
+        if (typeof title !== "undefined") requestBody.title = title;
+        if (typeof notes !== "undefined") requestBody.notes = notes;
+        if (typeof due !== "undefined") {
+          requestBody.due = due === "" ? null : due;
+        }
+
         const updatedTask = await tasks.tasks.patch({
           tasklist: taskListId,
           task: taskId,
-          requestBody: {
-            title,
-            notes,
-            due
-          }
+          requestBody
         });
 
         return {
@@ -221,6 +224,83 @@ export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
           content: [{
             type: "text",
             text: "Error updating task: " + (error instanceof Error ? error.message : String(error))
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  server.tool(
+    'reorder_tasks',
+    'Reorders tasks in a task list based on their IDs. The order of the IDs determines the new order of the tasks.',
+    {
+      taskListId: z.string().describe('The ID of the task list to reorder tasks in'),
+      taskIds: z.array(z.string()).describe('An array of task IDs in the desired order')
+    },
+    async ({ taskListId, taskIds }) => {
+      try {
+        // Move each task in order, setting the previous task as the "previous" parameter
+        let previousTaskId: string | undefined = undefined;
+        const reorderedTasks: tasks_v1.Schema$Task[] = [];
+        for (const taskId of taskIds) {
+          const response = await tasks.tasks.move({
+            tasklist: taskListId,
+            task: taskId,
+            previous: previousTaskId
+          });
+          reorderedTasks.push(response.data);
+          previousTaskId = taskId;
+        }
+
+        return {
+          content: [{
+            type: "text",
+            text: `Tasks reordered successfully! New order: ${taskIds.join(', ')}`
+          }],
+          structuredContent: {
+            reorderedTasks
+          }
+        };
+      } catch (error) {
+        console.error("Error reordering tasks:", error);
+        return {
+          content: [{
+            type: "text",
+            text: "Error reordering tasks: " + (error instanceof Error ? error.message : String(error))
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  server.tool(
+    'delete_task',
+    'Deletes a task from a specified task list by its ID.',
+    {
+      taskId: z.string().describe('The ID of the task to delete'),
+      taskListId: z.string().describe('The ID of the task list containing the task')
+    },
+    async ({ taskId, taskListId }) => {
+      try {
+        await tasks.tasks.delete({
+          tasklist: taskListId,
+          task: taskId
+        });
+
+        return {
+          content: [{
+            type: "text",
+            text: `✅ Task with ID "${taskId}" deleted successfully!`
+          }]
+        };
+      } catch (error) {
+        console.error("Error deleting task:", error);
+        return {
+          content: [{
+            type: "text",
+            text: "Error deleting task: " + (error instanceof Error ? error.message : String(error))
           }],
           isError: true
         };
