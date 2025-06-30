@@ -1,0 +1,230 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { tasks_v1 } from "googleapis";
+import { z } from "zod";
+
+function formatTaskAsText(task: tasks_v1.Schema$Task): string {
+  return `${task.title}${task.notes ? `\n${task.notes}` : ''}${task.due ? `\nDue: ${task.due}` : ''}`;
+}
+
+export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
+  server.tool(
+    'get_tasklists',
+    'Retrieves the user\'s task lists',
+    {},
+    async () => {
+      try {
+        const response = await tasks.tasklists.list();
+        const taskLists = response.data.items || [];
+        
+        if (taskLists.length === 0) {
+          return {
+            content: [{
+              type: "text",
+              text: "No task lists found."
+            }]
+          };
+        }
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify(taskLists, null, 2)
+          }],
+          structuredContent: {
+            tasklists: taskLists
+          }
+        };
+      } catch (error) {
+        console.error("Error retrieving task lists:", error);
+        return {
+          content: [{
+            type: "text",
+            text: "Error retrieving task lists: " + (error instanceof Error ? error.message : String(error))
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+  server.tool(
+    'list_tasks',
+    'Lists all tasks from the user\'s default task list or a specified task list',
+    {
+      taskListId: z.string().describe('The id of the task list to retrieve tasks from').optional(),
+    },
+    async ({ taskListId }) => {
+      try {
+        let selectedTaskListId: string | undefined = taskListId;
+
+        if (!selectedTaskListId) {
+          const tasklist = await tasks.tasklists.list();
+          const defaultTaskList = tasklist.data.items?.[0];
+          if (!defaultTaskList) {
+            return {
+              content: [{
+                type: "text",
+                text: "No task lists found."
+              }]
+            };
+          }
+          selectedTaskListId = defaultTaskList.id!;
+        }
+
+        const response = await tasks.tasks.list({
+          tasklist: selectedTaskListId,
+          showCompleted: true,
+        });
+
+        const taskItems = response.data.items || [];
+        
+        return {
+          content: [{
+            type: "text",
+            text: taskItems.length > 0 
+              ? JSON.stringify(taskItems, null, 2)
+              : "No tasks found."
+          }],
+          structuredContent: {
+            tasks: taskItems
+          }
+        };
+      } catch (error) {
+        console.error("Error listing tasks:", error);
+        return {
+          content: [{
+            type: "text",
+            text: "Error listing tasks: " + (error instanceof Error ? error.message : String(error))
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  server.tool(
+    'add_task',
+    'Adds a new task to the user\'s default task list',
+    {
+      title: z.string().describe('The title of the task'),
+      notes: z.string().optional().describe('Optional notes for the task'),
+      due: z.string().optional().describe('Optional due date in RFC 3339 format (e.g. 2024-12-31T23:59:59Z)'),
+      taskListId: z.string().describe('The ID of the task list to add the task to. If not provided, the default task list will be used.')
+    },
+    async ({ title, notes, due, taskListId }) => {
+      try {
+        const task = await tasks.tasks.insert({
+          tasklist: taskListId,
+          requestBody: {
+            title,
+            notes,
+            due
+          }
+        });
+
+        return {
+          content: [{
+            type: "text",
+            text: `Task created: ${formatTaskAsText(task.data)}`
+          }],
+          structuredContent: {
+            task: task.data
+          }
+        };
+      } catch (error) {
+        console.error("Error adding task:", error);
+        return {
+          content: [{
+            type: "text",
+            text: "Error adding task: " + (error instanceof Error ? error.message : String(error))
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  server.tool(
+    'complete_task',
+    'Marks a task as completed',
+    {
+      taskId: z.string().describe('The ID of the task to complete'),
+      taskListId: z.string().describe('The ID of the task list containing the task. If not provided, the default task list will be used.')
+    },
+    async ({ taskId, taskListId }) => {
+      try {
+        const task = await tasks.tasks.patch({
+          tasklist: taskListId,
+          task: taskId,
+          requestBody: {
+            status: "completed",
+            completed: new Date().toISOString()
+          }
+        });
+
+        return {
+          content: [{
+            type: "text",
+            text: `Task completed: ${formatTaskAsText(task.data)}`
+          }],
+          structuredContent: {
+            task: task.data
+          }
+        };
+      } catch (error) {
+        console.error("Error completing task:", error);
+        return {
+          content: [{
+            type: "text",
+            text: "Error completing task: " + (error instanceof Error ? error.message : String(error))
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  // Ahora una tool para poder actualizar una tarea
+  server.tool(
+    'update_task',
+    'Updates an existing task',
+    {
+      taskId: z.string().describe('The ID of the task to update'),
+      title: z.string().optional().describe('The new title of the task'),
+      notes: z.string().optional().describe('Optional new notes for the task'),
+      due: z.string().optional().describe('Optional new due date in RFC 3339 format (e.g. 2024-12-31T23:59:59Z)'),
+      taskListId: z.string().describe('The ID of the task list to update the task in')
+    },
+    async ({ taskId, title, notes, due, taskListId }) => {
+      try {
+        const updatedTask = await tasks.tasks.patch({
+          tasklist: taskListId,
+          task: taskId,
+          requestBody: {
+            title,
+            notes,
+            due
+          }
+        });
+
+        return {
+          content: [{
+            type: "text",
+            text: `Task updated: ${formatTaskAsText(updatedTask.data)}`
+          }],
+          structuredContent: {
+            task: updatedTask.data
+          }
+        };
+      } catch (error) {
+        console.error("Error updating task:", error);
+        return {
+          content: [{
+            type: "text",
+            text: "Error updating task: " + (error instanceof Error ? error.message : String(error))
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+}
