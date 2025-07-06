@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import { z } from "zod";
 
 export function setupCalendarTools(server: McpServer, calendar: any) {
+  // Tool to get events from the calendar for a specific date range
   server.tool(
     'get-events',
     'Get events from the calendar for a specific dates. By default, it retrieves events for the next 7 days.',
@@ -48,6 +49,7 @@ export function setupCalendarTools(server: McpServer, calendar: any) {
     }
   );
 
+  // Tool to create an all-day event or a timed event in the calendar
   server.tool(
     'create-all-day-event',
     'Create an all-day event in Google Calendar. Can be single or multiple days.',
@@ -88,6 +90,7 @@ export function setupCalendarTools(server: McpServer, calendar: any) {
     }
   );
 
+  // Tool to create a timed event with specific start and end times
   server.tool(
     'create-timed-event',
     'Create an event with specific start and end times in Google Calendar. Can span multiple days.',
@@ -133,7 +136,7 @@ export function setupCalendarTools(server: McpServer, calendar: any) {
     }
   );
 
-  // Tool para poder borrar un evento
+  // Tool to delete an event by its ID
   server.tool(
     'delete-event',
     'Delete an event from Google Calendar by its ID.',

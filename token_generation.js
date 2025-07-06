@@ -8,9 +8,7 @@ const oauth2Client = new google.auth.OAuth2(
   "urn:ietf:wg:oauth:2.0:oob"
 );
 
-// const SCOPES = ["https://www.googleapis.com/auth/calendar"];
 const SCOPES = ["https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks"];
-// const SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -24,17 +22,17 @@ async function getAccessToken() {
     prompt: "consent",
   });
 
-  console.log("Autoriza esta app visitando este URL:\n\n", authUrl);
+  console.log("Authorize this app by visiting this URL:\n\n", authUrl);
 
-  const code = await rl.question("\nPega aquí el código de autorización: ");
+  const code = await rl.question("\nPaste the authorization code here: ");
   rl.close();
 
   try {
     const { tokens } = await oauth2Client.getToken(code);
-    console.log("\n✅ Tokens generados:\n");
+    console.log("\n✅ Tokens generated:\n");
     console.log(tokens);
   } catch (err) {
-    console.error("\n❌ Error al obtener tokens:\n", err);
+    console.error("\n❌ Error obtaining tokens:\n", err);
   }
 }
 

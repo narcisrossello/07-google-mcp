@@ -7,6 +7,7 @@ function formatTaskAsText(task: tasks_v1.Schema$Task): string {
 }
 
 export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
+  // Tool to retrieve the user's task lists
   server.tool(
     'get_tasklists',
     'Retrieves the user\'s task lists',
@@ -46,6 +47,8 @@ export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
       }
     }
   );
+
+  // Tool to list tasks from a specific task list or the default task list
   server.tool(
     'list_tasks',
     'Lists all tasks from the user\'s default task list or a specified task list',
@@ -101,6 +104,7 @@ export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
     }
   );
 
+  // Tool to add a new task to the user's default task list or a specified task list
   server.tool(
     'add_task',
     'Adds a new task to the user\'s default task list',
@@ -143,6 +147,7 @@ export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
     }
   );
 
+  // Tool to complete a task by its ID
   server.tool(
     'complete_task',
     'Marks a task as completed',
@@ -183,6 +188,7 @@ export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
     }
   );
 
+  // Tool to update an existing task
   server.tool(
     'update_task',
     'Updates an existing task. To remove the due date, pass an empty string for "due".',
@@ -231,6 +237,7 @@ export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
     }
   );
 
+  // Tool to reorder tasks in a task list
   server.tool(
     'reorder_tasks',
     'Reorders tasks in a task list based on their IDs. The order of the IDs determines the new order of the tasks.',
@@ -275,6 +282,7 @@ export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
     }
   );
 
+  // Tool to delete a task from a specified task list by its ID
   server.tool(
     'delete_task',
     'Deletes a task from a specified task list by its ID.',
@@ -308,7 +316,7 @@ export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
     }
   );
 
-  // tool para crear una nueva lista de tareas
+  // Tool to create a new task list with the specified title
   server.tool(
     'create_tasklist',
     'Creates a new task list with the specified title.',
