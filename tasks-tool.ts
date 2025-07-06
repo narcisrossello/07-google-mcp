@@ -307,4 +307,41 @@ export function setupTasksTools(server: McpServer, tasks: tasks_v1.Tasks) {
       }
     }
   );
+
+  // tool para crear una nueva lista de tareas
+  server.tool(
+    'create_tasklist',
+    'Creates a new task list with the specified title.',
+    {
+      title: z.string().describe('The title of the new task list')
+    },
+    async ({ title }) => {
+      try {
+        const taskList = await tasks.tasklists.insert({
+          requestBody: {
+            title
+          }
+        });
+
+        return {
+          content: [{
+            type: "text",
+            text: `Task list created: ${taskList.data.title}`
+          }],
+          structuredContent: {
+            tasklist: taskList.data
+          }
+        };
+      } catch (error) {
+        console.error("Error creating task list:", error);
+        return {
+          content: [{
+            type: "text",
+            text: "Error creating task list: " + (error instanceof Error ? error.message : String(error))
+          }],
+          isError: true
+        };
+      }
+    }
+  );
 }
